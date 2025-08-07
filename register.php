@@ -37,13 +37,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $stmt = $pdo->prepare("INSERT INTO users (username, email, password, status) VALUES (?, ?, ?, 'pending')");
                     $stmt->execute([$username, $email, $hashed_password]);
                     
-                    // Invia notifica agli amministratori
-                    sendRegistrationRequestEmail($username, $email);
+                    // Invia notifica agli amministratori (se la funzione esiste)
+                    if (function_exists('sendRegistrationRequestEmail')) {
+                        sendRegistrationRequestEmail($username, $email, $reason);
+                    }
                     
                     $success = 'Richiesta di registrazione inviata! Un amministratore esaminerà la tua richiesta e riceverai una notifica via email.';
                     header('refresh:5;url=login.php');
                 } catch (PDOException $e) {
-                    $error = 'Errore durante l\'invio della richiesta';
+                    $error = 'Errore durante l\'invio della richiesta: ' . $e->getMessage();
                 }
             }
         }
@@ -82,6 +84,23 @@ require_once 'includes/header.php';
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
+                                    <label for="username" class="form-label">Username</label>
+                                    <input type="text" class="form-control" id="username" name="username" 
+                                           value="<?= htmlEscape($_POST['username'] ?? '') ?>" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" name="email" 
+                                           value="<?= htmlEscape($_POST['email'] ?? '') ?>" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
                                     <label for="password" class="form-label">Password</label>
                                     <input type="password" class="form-control" id="password" name="password" required>
                                     <div class="form-text">Minimo 6 caratteri</div>
@@ -115,21 +134,4 @@ require_once 'includes/header.php';
     </div>
 </div>
 
-<?php require_once 'includes/footer.php'; ?><label for="username" class="form-label">Username</label>
-                                    <input type="text" class="form-control" id="username" name="username" 
-                                           value="<?= htmlEscape($_POST['username'] ?? '') ?>" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="email" class="form-label">Email</label>
-                                    <input type="email" class="form-control" id="email" name="email" 
-                                           value="<?= htmlEscape($_POST['email'] ?? '') ?>" required>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    
+<?php require_once 'includes/footer.php'; ?>

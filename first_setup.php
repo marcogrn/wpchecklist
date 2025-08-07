@@ -49,7 +49,7 @@ $page_title = 'Setup Iniziale - WordPress Checklist';
 require_once 'includes/header.php';
 ?>
 
-<div class="container-fluid d-flex align-items-center justify-content-center" style="min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+<div class="container-fluid d-flex align-items-center justify-content-center">
     <div class="col-md-5">
         <div class="card shadow-lg">
             <div class="card-header text-center bg-primary text-white">

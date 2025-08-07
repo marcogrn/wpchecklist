@@ -27,11 +27,6 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                         Gestione Checklist
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link <?= $current_page === 'import_export' ? 'active' : '' ?>" href="/import_export.php">
-                        Import/Export
-                    </a>
-                </li>
                 
                 <!-- Menu Amministratore -->
                 <?php if ($user['role'] === 'admin'): ?>
@@ -43,6 +38,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
                         <ul class="dropdown-menu">
                             <li><a class="dropdown-item" href="/admin/users.php">Gestione Utenti</a></li>
                             <li><a class="dropdown-item" href="/admin/messages.php">Messaggi Globali</a></li>
+			    <li><a class="dropdown-item" href="/import_export.php">Import/Export</a></li>
                         </ul>
                     </li>
                 <?php endif; ?>
