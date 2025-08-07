@@ -11,7 +11,7 @@ define('DB_PASS', 'root');
 define('SMTP_HOST', 'smtp.ionos.it');
 define('SMTP_PORT', 465);
 define('SMTP_USERNAME', 'info@marcoguerini.com');
-define('SMTP_PASSWORD', 'rcM6@3HMg');
+define('SMTP_PASSWORD', '');
 define('FROM_EMAIL', 'info@marcoguerini.com');
 define('FROM_NAME', 'WordPress Checklist');
 
