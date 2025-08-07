@@ -1,6 +1,12 @@
 <?php
 require_once 'config.php';
 
+// Verifica se il sistema ha bisogno di setup iniziale
+if (checkFirstTimeSetup()) {
+    header('Location: first_setup.php');
+    exit();
+}
+
 $error = '';
 $success = '';
 
@@ -11,8 +17,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $error = 'Inserire un indirizzo email valido';
         } else {
-            // Verifica che l'email esista nel database
-            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+            // Verifica che l'email esista nel database e sia approvata
+            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND status = 'approved'");
             $stmt->execute([$email]);
             
             if ($stmt->fetch()) {
@@ -24,7 +30,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             } else {
                 // Per sicurezza, non rivelare se l'email esiste o meno
-                $success = 'Se l\'email è registrata nel sistema, riceverai le istruzioni per il reset.';
+                // Ma diamo un messaggio diverso se l'account non è approvato
+                $stmt = $pdo->prepare("SELECT status FROM users WHERE email = ?");
+                $stmt->execute([$email]);
+                $user_status = $stmt->fetch();
+                
+                if ($user_status && $user_status['status'] !== 'approved') {
+                    $error = 'Account non approvato. Contatta l\'amministratore per il reset della password.';
+                } else {
+                    $success = 'Se l\'email è registrata nel sistema e l\'account è approvato, riceverai le istruzioni per il reset.';
+                }
             }
         }
     } else {
@@ -52,6 +67,13 @@ require_once 'includes/header.php';
                         <?= htmlEscape($success) ?>
                     </div>
                 <?php else: ?>
+                    <div class="alert alert-info">
+                        <small>
+                            <strong>Nota:</strong> Il reset password è disponibile solo per account approvati. 
+                            Se il tuo account è in attesa di approvazione, contatta un amministratore.
+                        </small>
+                    </div>
+                    
                     <p class="text-muted">Inserisci il tuo indirizzo email per ricevere le istruzioni per reimpostare la password.</p>
                     
                     <form method="POST">
@@ -74,4 +96,3 @@ require_once 'includes/header.php';
 </div>
 
 <?php require_once 'includes/footer.php'; ?>
-            

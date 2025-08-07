@@ -3,7 +3,7 @@ session_start();
 
 // Configurazione database
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'wordpress_checklist_3');
+define('DB_NAME', 'wordpress_checklist_4');
 define('DB_USER', 'root');
 define('DB_PASS', 'root');
 
@@ -35,6 +35,24 @@ function isLoggedIn() {
 function requireLogin() {
     if (!isLoggedIn()) {
         header('Location: login.php');
+        exit();
+    }
+}
+
+function requireAdmin() {
+    requireLogin();
+    $user = getCurrentUser();
+    if (!$user || $user['role'] !== 'admin') {
+        header('Location: index.php?error=access_denied');
+        exit();
+    }
+}
+
+function requireApprovedUser() {
+    requireLogin();
+    $user = getCurrentUser();
+    if (!$user || $user['status'] !== 'approved') {
+        header('Location: pending_approval.php');
         exit();
     }
 }
@@ -72,8 +90,8 @@ function sendEmail($to, $subject, $message, $isHTML = true) {
 function createPasswordResetToken($email) {
     global $pdo;
     
-    // Verifica che l'email esista
-    $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+    // Verifica che l'email esista e sia approvata
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND status = 'approved'");
     $stmt->execute([$email]);
     if (!$stmt->fetch()) {
         return false;
@@ -103,6 +121,7 @@ function validatePasswordResetToken($token) {
         WHERE pr.token = ? 
         AND pr.expires_at > NOW() 
         AND pr.used_at IS NULL
+        AND u.status = 'approved'
     ");
     $stmt->execute([$token]);
     return $stmt->fetch();
@@ -139,5 +158,111 @@ function sendPasswordResetEmail($email) {
     ";
     
     return sendEmail($email, $subject, $message, true);
+}
+
+function sendRegistrationRequestEmail($username, $email) {
+    // Ottieni tutti gli admin per notificarli
+    global $pdo;
+    $stmt = $pdo->prepare("SELECT email FROM users WHERE role = 'admin' AND status = 'approved'");
+    $stmt->execute();
+    $admins = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    if (empty($admins)) return true; // Se non ci sono admin, non inviare email
+    
+    $subject = "Nuova Richiesta di Registrazione - WordPress Checklist";
+    $admin_link = BASE_URL . "/admin/users.php";
+    
+    $message = "
+    <html>
+    <body>
+        <h2>Nuova Richiesta di Registrazione</h2>
+        <p>Un nuovo utente ha richiesto l'accesso al sistema WordPress Checklist:</p>
+        <ul>
+            <li><strong>Username:</strong> $username</li>
+            <li><strong>Email:</strong> $email</li>
+        </ul>
+        <p><a href='$admin_link' style='background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Gestisci Richieste</a></p>
+        <p>Accedi al pannello amministrativo per approvare o rifiutare questa richiesta.</p>
+    </body>
+    </html>
+    ";
+    
+    $success = true;
+    foreach ($admins as $admin_email) {
+        if (!sendEmail($admin_email, $subject, $message, true)) {
+            $success = false;
+        }
+    }
+    
+    return $success;
+}
+
+function sendApprovalNotificationEmail($email, $username, $approved) {
+    $subject = $approved ? "Registrazione Approvata - WordPress Checklist" : "Registrazione Rifiutata - WordPress Checklist";
+    
+    if ($approved) {
+        $login_link = BASE_URL . "/login.php";
+        $message = "
+        <html>
+        <body>
+            <h2>Registrazione Approvata</h2>
+            <p>Ciao $username,</p>
+            <p>La tua registrazione per WordPress Checklist è stata approvata!</p>
+            <p>Ora puoi accedere al sistema utilizzando le tue credenziali:</p>
+            <p><a href='$login_link' style='background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Accedi Ora</a></p>
+            <p>Benvenuto nel team!</p>
+        </body>
+        </html>
+        ";
+    } else {
+        $message = "
+        <html>
+        <body>
+            <h2>Registrazione Non Approvata</h2>
+            <p>Ciao $username,</p>
+            <p>Ci dispiace informarti che la tua richiesta di registrazione per WordPress Checklist non è stata approvata.</p>
+            <p>Per maggiori informazioni, contatta l'amministratore del sistema.</p>
+        </body>
+        </html>
+        ";
+    }
+    
+    return sendEmail($email, $subject, $message, true);
+}
+
+function checkFirstTimeSetup() {
+    global $pdo;
+    $stmt = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin'");
+    $admin_count = $stmt->fetchColumn();
+    return $admin_count == 0;
+}
+
+function getActiveAdminMessages($user_id) {
+    global $pdo;
+    
+    $stmt = $pdo->prepare("
+        SELECT am.* 
+        FROM admin_messages am
+        WHERE am.is_active = 1
+        AND am.id NOT IN (
+            SELECT udm.message_id 
+            FROM user_dismissed_messages udm 
+            WHERE udm.user_id = ?
+        )
+        ORDER BY am.created_at DESC
+    ");
+    $stmt->execute([$user_id]);
+    return $stmt->fetchAll();
+}
+
+function dismissMessage($user_id, $message_id) {
+    global $pdo;
+    
+    try {
+        $stmt = $pdo->prepare("INSERT IGNORE INTO user_dismissed_messages (user_id, message_id) VALUES (?, ?)");
+        return $stmt->execute([$user_id, $message_id]);
+    } catch (PDOException $e) {
+        return false;
+    }
 }
 ?>

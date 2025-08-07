@@ -1,8 +1,20 @@
 <?php
 require_once 'config.php';
 requireLogin();
+requireApprovedUser();
 
 $user = getCurrentUser();
+
+// Gestione dismissal messaggi admin
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['dismiss_message'])) {
+    $message_id = (int)$_POST['message_id'];
+    dismissMessage($user['id'], $message_id);
+    header('Location: index.php');
+    exit();
+}
+
+// Recupera messaggi admin attivi per l'utente
+$admin_messages = getActiveAdminMessages($user['id']);
 
 // Recupera tutti i progetti
 $stmt = $pdo->prepare("
@@ -30,6 +42,25 @@ require_once 'includes/navbar.php';
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     <?php endif; ?>
+    
+    <?php if (isset($_GET['error']) && $_GET['error'] === 'access_denied'): ?>
+        <div class="alert alert-warning alert-dismissible fade show">
+            Non hai i permessi per accedere a quella sezione.
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php endif; ?>
+    
+    <!-- Messaggi dell'amministratore -->
+    <?php foreach ($admin_messages as $message): ?>
+        <div class="alert alert-<?= $message['type'] ?> alert-dismissible fade show" role="alert">
+            <strong>Messaggio dall'Amministratore:</strong>
+            <?= nl2br(htmlEscape($message['message'])) ?>
+            <form method="POST" class="d-inline ms-2">
+                <input type="hidden" name="message_id" value="<?= $message['id'] ?>">
+                <button type="submit" name="dismiss_message" class="btn-close" aria-label="Close"></button>
+            </form>
+        </div>
+    <?php endforeach; ?>
     
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>I tuoi Progetti</h2>

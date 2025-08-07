@@ -1,16 +1,21 @@
--- Database: wordpress_checklist_2 (aggiornato)
+-- Database: wordpress_checklist_3 (aggiornato con sistema approvazione)
 
-CREATE DATABASE IF NOT EXISTS wordpress_checklist_2;
-USE wordpress_checklist_2;
+CREATE DATABASE IF NOT EXISTS wordpress_checklist_3;
+USE wordpress_checklist_3;
 
--- Tabella utenti (aggiornata con email e reset password)
+-- Tabella utenti (aggiornata con ruoli e approvazione)
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
+    role ENUM('user', 'admin') DEFAULT 'user',
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    approved_by INT NULL,
+    approved_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Tabella per token reset password
@@ -26,7 +31,7 @@ CREATE TABLE password_resets (
     INDEX idx_expires (expires_at)
 );
 
--- Tabella progetti (invariata)
+-- Tabella progetti
 CREATE TABLE projects (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -36,7 +41,7 @@ CREATE TABLE projects (
     FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
--- Tabella checklist items (invariata)
+-- Tabella checklist items
 CREATE TABLE checklist_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
@@ -45,7 +50,7 @@ CREATE TABLE checklist_items (
     sort_order INT DEFAULT 0
 );
 
--- Tabella per tracciare i controlli completati (invariata)
+-- Tabella per tracciare i controlli completati
 CREATE TABLE project_checks (
     id INT AUTO_INCREMENT PRIMARY KEY,
     project_id INT,
@@ -56,6 +61,29 @@ CREATE TABLE project_checks (
     FOREIGN KEY (checklist_item_id) REFERENCES checklist_items(id),
     FOREIGN KEY (checked_by) REFERENCES users(id),
     UNIQUE KEY unique_check (project_id, checklist_item_id)
+);
+
+-- Tabella per messaggi globali dell'amministratore
+CREATE TABLE admin_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    message TEXT NOT NULL,
+    type ENUM('info', 'warning', 'success', 'danger') DEFAULT 'info',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+-- Tabella per tracciare quali utenti hanno chiuso quali messaggi
+CREATE TABLE user_dismissed_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    message_id INT,
+    dismissed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (message_id) REFERENCES admin_messages(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_dismissal (user_id, message_id)
 );
 
 -- Inserimento checklist predefinita per WordPress (30 controlli completi)
@@ -90,7 +118,3 @@ INSERT INTO checklist_items (title, description, category, sort_order) VALUES
 ('Test privacy e GDPR', 'Verificare privacy policy, cookie banner, consenso trattamento dati', 'Compliance', 28),
 ('Controllo informazioni legali', 'Verificare presenza e correttezza di termini di servizio, informative', 'Compliance', 29),
 ('Test ambiente di produzione', 'Verificare configurazione server di produzione, PHP version, limiti', 'Deploy', 30);
-
--- Utente demo aggiornato (password: demo123)
-INSERT INTO users (username, email, password) VALUES 
-('demo', 'demo@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi');

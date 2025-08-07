@@ -1,6 +1,12 @@
 <?php
 require_once 'config.php';
 
+// Verifica se il sistema ha bisogno di setup iniziale
+if (checkFirstTimeSetup()) {
+    header('Location: first_setup.php');
+    exit();
+}
+
 $error = '';
 $success = '';
 
@@ -14,18 +20,37 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $password = $_POST['password'];
     
     if ($username_or_email && $password) {
-        // Permetti login con username o email
-        $stmt = $pdo->prepare("SELECT id, username, email, password FROM users WHERE username = ? OR email = ?");
+        // Permetti login solo per utenti approvati
+        $stmt = $pdo->prepare("SELECT id, username, email, password, role, status FROM users WHERE (username = ? OR email = ?) AND status = 'approved'");
         $stmt->execute([$username_or_email, $username_or_email]);
         $user = $stmt->fetch();
         
         if ($user && password_verify($password, $user['password'])) {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
+            $_SESSION['user_role'] = $user['role'];
             header('Location: index.php');
             exit();
         } else {
-            $error = 'Credenziali non valide';
+            // Verifica se l'utente esiste ma non è approvato
+            $stmt = $pdo->prepare("SELECT status FROM users WHERE username = ? OR email = ?");
+            $stmt->execute([$username_or_email, $username_or_email]);
+            $user_status = $stmt->fetch();
+            
+            if ($user_status) {
+                switch ($user_status['status']) {
+                    case 'pending':
+                        $error = 'Account in attesa di approvazione. Riceverai una email quando l\'amministratore approverà il tuo account.';
+                        break;
+                    case 'rejected':
+                        $error = 'Account non approvato. Contatta l\'amministratore per maggiori informazioni.';
+                        break;
+                    default:
+                        $error = 'Credenziali non valide';
+                }
+            } else {
+                $error = 'Credenziali non valide';
+            }
         }
     } else {
         $error = 'Inserire username/email e password';
@@ -66,7 +91,7 @@ require_once 'includes/header.php';
                     <button type="submit" class="btn btn-primary w-100">Accedi</button>
                     
                     <div class="text-center mt-3">
-                        <a href="register.php" class="btn btn-outline-secondary btn-sm me-2">Crea Account</a>
+                        <a href="register.php" class="btn btn-outline-secondary btn-sm me-2">Richiedi Registrazione</a>
                         <a href="forgot_password.php" class="btn btn-outline-secondary btn-sm">Password Dimenticata?</a>
                     </div>
                 </form>
