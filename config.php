@@ -2,10 +2,10 @@
 session_start();
 
 // Configurazione database
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'wordpress_checklist_4');
-define('DB_USER', 'root');
-define('DB_PASS', 'root');
+define('DB_HOST', '212.227.164.90');
+define('DB_NAME', 'db_wpchecklist_01');
+define('DB_USER', 'usr_wpchecklist_01');
+define('DB_PASS', 'OUTAtOlvaSTi');
 
 // Configurazione email
 define('SMTP_HOST', 'smtp.ionos.it');
@@ -16,7 +16,7 @@ define('FROM_EMAIL', 'info@marcoguerini.com');
 define('FROM_NAME', 'WordPress Checklist');
 
 // URL base dell'applicazione
-define('BASE_URL', 'https://checklist.host:8890');
+define('BASE_URL', 'https://wpchecklist.marcoguerini.com/');
 
 // Connessione database
 try {

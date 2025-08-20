@@ -1,7 +1,7 @@
--- Database: wordpress_checklist_3 (aggiornato con sistema approvazione)
+-- Database: variare dbname con il nome del vostro db
 
-CREATE DATABASE IF NOT EXISTS wordpress_checklist_3;
-USE wordpress_checklist_3;
+CREATE DATABASE IF NOT EXISTS dbname;
+USE dbname;
 
 -- Tabella utenti (aggiornata con ruoli e approvazione)
 CREATE TABLE users (
